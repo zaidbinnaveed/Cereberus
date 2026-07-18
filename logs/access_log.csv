@@ -1,0 +1,12 @@
+timestamp,status,name,distance,snapshot
+2026-07-18T16:27:11,SPOOF_SUSPECTED,Zaid,0.2942,C:\Users\Zaid\OneDrive\Desktop\Cereberus\logs\intruder_snapshots\event_20260718_162711.jpg
+2026-07-18T16:27:19,GRANTED,Zaid,0.3022,
+2026-07-18T16:27:28,SPOOF_SUSPECTED,Zaid,0.2531,C:\Users\Zaid\OneDrive\Desktop\Cereberus\logs\intruder_snapshots\event_20260718_162728.jpg
+2026-07-18T16:27:34,GRANTED,Zaid,0.2738,
+2026-07-18T16:27:43,SPOOF_SUSPECTED,Zaid,0.2984,C:\Users\Zaid\OneDrive\Desktop\Cereberus\logs\intruder_snapshots\event_20260718_162743.jpg
+2026-07-18T16:27:52,SPOOF_SUSPECTED,Zaid,0.2989,C:\Users\Zaid\OneDrive\Desktop\Cereberus\logs\intruder_snapshots\event_20260718_162752.jpg
+2026-07-18T16:28:01,SPOOF_SUSPECTED,Zaid,0.2981,C:\Users\Zaid\OneDrive\Desktop\Cereberus\logs\intruder_snapshots\event_20260718_162801.jpg
+2026-07-18T16:33:07,GRANTED,Zaid,0.3181,
+2026-07-18T16:33:11,GRANTED,Zaid,0.2843,
+2026-07-18T16:33:13,GRANTED,Zaid,0.2750,
+2026-07-18T16:33:22,SPOOF_SUSPECTED,Zaid,0.3016,C:\Users\Zaid\OneDrive\Desktop\Cereberus\logs\intruder_snapshots\event_20260718_163322.jpg
