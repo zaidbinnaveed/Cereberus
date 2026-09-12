@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+venv/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+Thumbs.db
+data/embeddings.pkl
+logs/access_log.csv
+logs/intruder_snapshots/*.jpg

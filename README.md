@@ -1,8 +1,43 @@
-# Cereberus Backend
+# Cereberus
 
-Modular backend for the face-gated access control system. No UI polish here on
-purpose — this is the logic layer, built so a UI (yours or your friend's) can
-be swapped in on top without touching any of this code.
+Face-gated access control with a production web operator console, blink-based
+liveness verification, identity enrollment, event logging, and denied-entry
+snapshots.
+
+## Run the web console
+
+The checked-in virtual environment already contains the recognition stack. Build
+the frontend once, then start the integrated server:
+
+```powershell
+cd frontend
+npm install
+npm run build
+cd ..
+.\venv\Scripts\python.exe -m src.web
+```
+
+Open `http://127.0.0.1:8765`. The browser handles camera capture and sends a
+compressed frame to the local Python process for recognition. Nothing is
+uploaded to a third-party service.
+
+The console includes:
+
+- Live gateway monitoring with normalized face targeting and clear decision states
+- Blink-based liveness feedback and stable, one-event-per-attempt decisions
+- Five-sample guided enrollment and trusted-identity removal
+- Local audit history with recognition confidence and denied-entry snapshots
+- Runtime health, threshold, and dependency diagnostics
+- A safe demo mode for reviewing the interaction without camera permission
+
+For visual development, run the backend above and `npm run dev` in `frontend/`.
+Vite proxies `/api` to the Python server on port 8765.
+
+## Recognition engine
+
+The recognition engine remains cleanly separated from the web console, so the
+operator experience can evolve without coupling it to camera and biometric
+processing details.
 
 ## Folder structure
 
@@ -109,10 +144,11 @@ keys like `left_eye`, `right_eye`, `nose_bridge`, `chin`, etc. Perfect for
 drawing the corner-bracket / scan-line HUD on top of `box` and `landmarks`
 without needing to touch any backend logic.
 
-## What's intentionally NOT done yet
+## Current operating scope
 
-- No fancy visuals (scan line, corner brackets) — that's UI-layer work
-- Only handles one face per frame (first detected) — fine for a single-person gate
-- No web API wrapper — if your friend needs a REST endpoint instead of
-  calling `process_frame()` directly in Python, that's a thin FastAPI wrapper
-  we can add later without changing anything in `src/`
+- A gate processes one person at a time and uses the first detected face.
+- Recognition and biometric data stay on the local machine; the hosted console
+  is a private interface preview with demo mode, not a hosted biometric service.
+- Blink detection is a lightweight liveness challenge intended for a prototype.
+  A production physical-access deployment should add a trained anti-spoofing
+  model, encrypted biometric storage, authentication, and hardware relay controls.

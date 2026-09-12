@@ -9,6 +9,7 @@ isn't available (e.g. if this ever runs on Mac/Linux).
 
 import csv
 import os
+import threading
 from datetime import datetime
 
 import cv2
@@ -57,7 +58,7 @@ def log_event(status, name, distance, snapshot_path=None):
 
 def save_snapshot(frame):
     _ensure_dirs()
-    filename = f"event_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+    filename = f"event_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.jpg"
     path = os.path.join(config.SNAPSHOT_DIR, filename)
     cv2.imwrite(path, frame)
     return path
@@ -66,14 +67,14 @@ def save_snapshot(frame):
 def trigger_denied(frame, name=None, distance=None):
     snapshot_path = save_snapshot(frame)
     log_event("DENIED", name, distance, snapshot_path)
-    play_alarm_sound()
+    threading.Thread(target=play_alarm_sound, daemon=True).start()
     return snapshot_path
 
 
 def trigger_spoof(frame, name=None, distance=None):
     snapshot_path = save_snapshot(frame)
     log_event("SPOOF_SUSPECTED", name, distance, snapshot_path)
-    play_alarm_sound()
+    threading.Thread(target=play_alarm_sound, daemon=True).start()
     return snapshot_path
 
 

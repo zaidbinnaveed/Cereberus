@@ -29,6 +29,9 @@ class CereberusEngine:
             consec_frames=config.EAR_CONSEC_FRAMES,
             timeout_seconds=config.LIVENESS_TIMEOUT_SECONDS,
         )
+        self._latched_result = None
+        self._missing_frames = 0
+        self._active_name = None
 
     def reload_db(self):
         """Call this after enrolling a new user without restarting the process."""
@@ -51,24 +54,41 @@ class CereberusEngine:
         locations = recognizer.get_face_locations(rgb)
 
         if not locations:
-            self.liveness.reset()
+            self._missing_frames += 1
+            if self._missing_frames >= 2:
+                self.liveness.reset()
+                self._latched_result = None
+                self._active_name = None
             return {"status": "NO_FACE", "name": None, "distance": None,
                     "box": None, "landmarks": None}
+
+        self._missing_frames = 0
 
         # Only the first detected face is handled for now (single-person gate).
         location = locations[0]
         landmarks_list = face_recognition.face_landmarks(rgb, [location])
         landmarks = landmarks_list[0] if landmarks_list else None
 
+        # A physical entry attempt should create one decision, alarm, snapshot,
+        # and audit row. Keep that decision latched until the subject leaves.
+        if self._latched_result is not None:
+            return {**self._latched_result, "box": location, "landmarks": landmarks}
+
         encoding = recognizer.get_face_encoding(rgb, location)
         name, distance = recognizer.match_encoding(encoding, self.db)
         matched = recognizer.is_match(name, distance)
 
+        if name != self._active_name:
+            self.liveness.reset()
+            self._active_name = name
+
         if not matched:
             alarm.trigger_denied(frame, name, distance)
             self.liveness.reset()
-            return {"status": "DENIED", "name": name, "distance": distance,
-                    "box": location, "landmarks": landmarks}
+            self._latched_result = {"status": "DENIED", "name": name,
+                                    "distance": distance, "box": location,
+                                    "landmarks": landmarks}
+            return self._latched_result
 
         # Known face -> still require a blink before granting, to catch
         # someone holding up a photo of an authorized person.
@@ -77,14 +97,18 @@ class CereberusEngine:
         if is_live:
             alarm.log_granted(name, distance)
             self.liveness.reset()
-            return {"status": "VERIFIED", "name": name, "distance": distance,
-                    "box": location, "landmarks": landmarks}
+            self._latched_result = {"status": "VERIFIED", "name": name,
+                                    "distance": distance, "box": location,
+                                    "landmarks": landmarks}
+            return self._latched_result
 
         if self.liveness.timed_out():
             alarm.trigger_spoof(frame, name, distance)
             self.liveness.reset()
-            return {"status": "SPOOF_SUSPECTED", "name": name, "distance": distance,
-                    "box": location, "landmarks": landmarks}
+            self._latched_result = {"status": "SPOOF_SUSPECTED", "name": name,
+                                    "distance": distance, "box": location,
+                                    "landmarks": landmarks}
+            return self._latched_result
 
         return {"status": "SCANNING", "name": name, "distance": distance,
                 "box": location, "landmarks": landmarks}
