@@ -1,154 +1,93 @@
 # Cereberus
 
-Face-gated access control with a production web operator console, blink-based
-liveness verification, identity enrollment, event logging, and denied-entry
-snapshots.
+A local-first, face-gated access-control prototype with blink-based liveness verification, guided identity enrollment, an operator console, and an inspectable access log.
 
-## Run the web console
+![Cereberus operator console](.design/cereberus-spatial-gateway-reference.png)
 
-The checked-in virtual environment already contains the recognition stack. Build
-the frontend once, then start the integrated server:
+## Why this project exists
 
-```powershell
+Cereberus explores the full interaction around a biometric gate—not only face matching. It separates the recognition engine from the operator interface and makes every decision visible through clear system states, confidence information, health diagnostics, and an audit trail.
+
+## Implemented flow
+
+1. The browser captures a camera frame.
+2. The local Python service detects and matches the first visible face.
+3. A matched identity must complete a blink challenge.
+4. The engine returns one of five explicit states:
+   - `NO_FACE`
+   - `SCANNING`
+   - `VERIFIED`
+   - `DENIED`
+   - `SPOOF_SUSPECTED`
+5. Decisions are logged locally. Denied and suspected-spoof attempts can store a snapshot.
+
+## Features
+
+- Five-sample guided identity enrollment
+- Local face embeddings and recognition
+- Blink-based liveness challenge
+- One-decision-per-attempt state handling
+- Operator console with live status and safe demo mode
+- Runtime health and threshold diagnostics
+- CSV event history with denied-entry snapshots
+- Unit coverage for storage, engine states, and web endpoints
+
+## Stack
+
+- Python
+- OpenCV
+- `face_recognition`
+- NumPy
+- React and Vite
+
+## Run locally
+
+### Backend
+
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Frontend and integrated console
+
+```bash
 cd frontend
-npm install
+npm ci
 npm run build
 cd ..
-.\venv\Scripts\python.exe -m src.web
+python -m src.web
 ```
 
-Open `http://127.0.0.1:8765`. The browser handles camera capture and sends a
-compressed frame to the local Python process for recognition. Nothing is
-uploaded to a third-party service.
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
-The console includes:
+For visual development, keep the Python service running and use `npm run dev` inside `frontend/`; Vite proxies API requests to port 8765.
 
-- Live gateway monitoring with normalized face targeting and clear decision states
-- Blink-based liveness feedback and stable, one-event-per-attempt decisions
-- Five-sample guided enrollment and trusted-identity removal
-- Local audit history with recognition confidence and denied-entry snapshots
-- Runtime health, threshold, and dependency diagnostics
-- A safe demo mode for reviewing the interaction without camera permission
+## Enroll an identity
 
-For visual development, run the backend above and `npm run dev` in `frontend/`.
-Vite proxies `/api` to the Python server on port 8765.
-
-## Recognition engine
-
-The recognition engine remains cleanly separated from the web console, so the
-operator experience can evolve without coupling it to camera and biometric
-processing details.
-
-## Folder structure
-
-```
-Cereberus/
-├── venv/                    (already set up)
-├── data/
-│   └── embeddings.pkl       (created automatically on first enrollment)
-├── logs/
-│   ├── access_log.csv       (created automatically)
-│   └── intruder_snapshots/  (created automatically)
-├── src/
-│   ├── __init__.py
-│   ├── config.py            <- thresholds & paths live here
-│   ├── database.py          <- enrolled-user storage
-│   ├── recognizer.py        <- face detection/encoding/matching
-│   ├── liveness.py          <- blink-based anti-spoofing
-│   ├── alarm.py             <- beep + snapshot + CSV logging
-│   ├── enroll.py            <- run this to register a person
-│   └── main.py              <- CereberusEngine + debug loop
-└── README.md
+```bash
+python -m src.enroll "Name"
 ```
 
-## Installation
+Follow the camera prompts and capture five samples. Stored embeddings are created locally.
 
-Copy the `src/` folder and this `README.md` straight into your existing
-`Cereberus` project folder (the one with `venv/` already set up). Nothing new
-needs to be pip-installed — this uses only what you already have:
-`opencv-python`, `face_recognition`, `numpy`.
+## Test
 
-## Step 1 — Enroll yourself (and anyone else authorized)
-
-From the `Cereberus` folder, with your venv active:
-
-```cmd
-python -m src.enroll "Zaid"
+```bash
+python -m unittest discover -s tests
 ```
 
-A window opens showing your webcam with a green box around your face.
-Move your head slightly between captures (look left, right, up, down, then
-straight) and press **SPACE** each time to capture a sample — 5 total. Press
-**ESC** to cancel without saving.
+## Configuration
 
-Repeat this command with a different name for anyone else who should be
-authorized.
+Recognition threshold, eye-aspect-ratio threshold, liveness timeout, storage paths, and logging paths are centralized in `src/config.py`.
 
-## Step 2 — Run the backend test loop
+## Security and privacy boundary
 
-```cmd
-python -m src.main
-```
+Cereberus is a prototype, not a production physical-access system.
 
-This opens a plain debug window (just a colored box + status text — the real
-scan-line visual comes later in the UI layer). It cycles through:
-
-- **NO_FACE** (gray) — nothing detected
-- **SCANNING** (yellow) — a known face was matched, waiting for a blink to confirm liveness
-- **VERIFIED** (green) — blink confirmed, access granted, logged
-- **DENIED** (red) — face doesn't match anyone enrolled, alarm + snapshot + logged
-- **SPOOF_SUSPECTED** (red) — matched a known face but never blinked within 8 seconds (likely a held-up photo), alarm + snapshot + logged
-
-Press **ESC** to quit.
-
-## Step 3 — Check the logs
-
-After testing, look in `logs/access_log.csv` — every decision gets a row
-with timestamp, status, matched name, and match distance. Denied/spoof
-attempts also save a snapshot into `logs/intruder_snapshots/`.
-
-## Tuning
-
-All the knobs live in `src/config.py`:
-
-| Setting | What it controls |
-|---|---|
-| `MATCH_THRESHOLD` | Lower = stricter matching (fewer false accepts, more false rejects) |
-| `EAR_THRESHOLD` | How closed an eye must be to count as "blinking" |
-| `LIVENESS_TIMEOUT_SECONDS` | How long to wait for a blink before flagging as spoof |
-
-If it's rejecting you too often, raise `MATCH_THRESHOLD` slightly (e.g. 0.5 →
-0.55). If it's letting strangers through, lower it.
-
-## The interface your friend's UI should call
-
-```python
-from src.main import CereberusEngine
-
-engine = CereberusEngine()
-
-# in your UI's frame loop:
-result = engine.process_frame(frame)  # frame = a BGR numpy array from OpenCV
-
-# result = {
-#     "status": "NO_FACE" | "SCANNING" | "VERIFIED" | "DENIED" | "SPOOF_SUSPECTED",
-#     "name": str or None,
-#     "distance": float or None,
-#     "box": (top, right, bottom, left) or None,
-#     "landmarks": dict or None,   # eye/nose/mouth points, for drawing custom overlays
-# }
-```
-
-`landmarks` is the raw output of `face_recognition.face_landmarks()` — it has
-keys like `left_eye`, `right_eye`, `nose_bridge`, `chin`, etc. Perfect for
-drawing the corner-bracket / scan-line HUD on top of `box` and `landmarks`
-without needing to touch any backend logic.
-
-## Current operating scope
-
-- A gate processes one person at a time and uses the first detected face.
-- Recognition and biometric data stay on the local machine; the hosted console
-  is a private interface preview with demo mode, not a hosted biometric service.
-- Blink detection is a lightweight liveness challenge intended for a prototype.
-  A production physical-access deployment should add a trained anti-spoofing
-  model, encrypted biometric storage, authentication, and hardware relay controls.
+- Biometric processing and stored embeddings remain local.
+- Blink detection is a lightweight challenge and is not robust protection against sophisticated presentation attacks.
+- The engine currently processes one person at a time and uses the first detected face.
+- A real deployment would require trained anti-spoofing, encrypted biometric storage, authenticated administration, retention controls, adversarial testing, and hardware relay safeguards.
