@@ -91,3 +91,7 @@ Cereberus is a prototype, not a production physical-access system.
 - Blink detection is a lightweight challenge and is not robust protection against sophisticated presentation attacks.
 - The engine currently processes one person at a time and uses the first detected face.
 - A real deployment would require trained anti-spoofing, encrypted biometric storage, authenticated administration, retention controls, adversarial testing, and hardware relay safeguards.
+
+## License
+
+[MIT](LICENSE) © Zaid Bin Naveed
